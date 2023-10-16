@@ -4,6 +4,8 @@ from PIL import Image, ImageTk
 import random
 import string
 import time
+from tkinter import ttk
+import database as db
 
 root = tk.Tk()
 root.title('Jogo da ampulheta em Tkinter')
@@ -13,6 +15,12 @@ root.resizable(False,False)
 
 # esta variável serve para controlar a execucao do jogo
 executando = True
+
+def selected_category(event):
+     category = event.widget.get()
+     conexao = db.conecta_bd()
+     categorias = db.lista_categorias(conexao)
+     print(categorias)
 
 def show_word():
     global label_palavra
@@ -98,9 +106,21 @@ imagens_forca.pack(side=tk.LEFT)
 label_categoria = tk.Label(frame_topo, text='Categoria:')
 label_categoria.pack(expand=True, anchor=tk.S, padx=30)
 
-label_valor_categoria = tk.Label(frame_topo, text='Cores')
-label_valor_categoria.config(font=('Arial', 14, 'bold'))
-label_valor_categoria.pack(expand=True, anchor=tk.N, padx=30)
+# label_valor_categoria = tk.Label(frame_topo, text='Cores')
+# label_valor_categoria.config(font=('Arial', 14, 'bold'))
+# label_valor_categoria.pack(anchor=tk.N, padx=30)
+# inserindo um combobox para as categorias de palavras
+valor_combobox = tk.StringVar()
+combobox_categoria = ttk.Combobox(frame_topo, width=10, state='readonly',
+                                              textvariable=valor_combobox, background='white')
+combobox_categoria.pack(expand=True, anchor=tk.N, padx=30)
+        
+# definindo os valores do combobox
+combobox_categoria['values'] = ('Cores', 'Animais')
+combobox_categoria.current(1)
+
+# quando selecionar um item no combobox
+combobox_categoria.bind("<<ComboboxSelected>>", selected_category)
 
 # frame para o cronometro
 frame_cronometro = tk.Frame(root)
