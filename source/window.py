@@ -16,11 +16,21 @@ root.resizable(False,False)
 # esta variável serve para controlar a execucao do jogo
 executando = True
 
+def preenche_categorias():
+    conexao = db.conecta_bd()
+    categorias = db.lista_categorias(conexao)
+    nomes_categorias = [nomes[1] for nomes in categorias]
+    combobox_categoria['values'] = nomes_categorias
+
 def selected_category(event):
-     category = event.widget.get()
+     categoria = event.widget.get()
+     print(categoria)
      conexao = db.conecta_bd()
-     categorias = db.lista_categorias(conexao)
-     print(categorias)
+     resultado = db.lista_palavras(conexao, categoria)
+     lista_palavras = [palavras[0] for palavras in resultado]
+     palavra_sorteada = random.choice(lista_palavras)
+     print(palavra_sorteada)
+     return palavra_sorteada
 
 def show_word():
     global label_palavra
@@ -116,8 +126,9 @@ combobox_categoria = ttk.Combobox(frame_topo, width=10, state='readonly',
 combobox_categoria.pack(expand=True, anchor=tk.N, padx=30)
         
 # definindo os valores do combobox
-combobox_categoria['values'] = ('Cores', 'Animais')
-combobox_categoria.current(1)
+preenche_categorias()
+#combobox_categoria['values'] = ('Cores', 'Animais')
+combobox_categoria.current(0)
 
 # quando selecionar um item no combobox
 combobox_categoria.bind("<<ComboboxSelected>>", selected_category)
@@ -142,6 +153,7 @@ frame_palavra.pack(fill=tk.X, pady=10)
 # pesquisa no bd a palavra, de acordo com a categoria selecionada
 lista_de_palavras = ['VERMELHO', 'AZUL', 'VERDE', 'AMARELO', 'LARANJA', 'ROXO', 'ROSA', 'PRETO', 'BRANCO', 'MARROM']
 palavra = random.choice(lista_de_palavras)
+
 label_palavra = []
 
 label_palavra.append(tk.Label(frame_palavra, text='Clique no botão Iniciar e descubra a palavra escondida', border=1, bg='#ffe1cf'))

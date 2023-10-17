@@ -25,13 +25,19 @@ def cria_tabelas(conexao):
 def lista_categorias(conexao):
     cursor = conexao.cursor()
     cursor.execute("select * from categoria order by id_categoria;")
-    resultado = cursor.fetchall()
-    return resultado
+    categorias = cursor.fetchall()
+    return categorias
 
 def insere_categoria(conexao, nome):
      cursor = conexao.cursor()
      cursor.execute('insert into categoria (nome) values (?)', (nome,))
      conexao.commit()
+
+def lista_palavras(conexao, categoria):
+    cursor = conexao.cursor()
+    cursor.execute("select palavra from palavras join categoria on(id_categoria = categoria_id) where categoria.nome = ?;", (categoria,))
+    palavras = cursor.fetchall()
+    return palavras
 
 if __name__ == '__main__':
     conexao = conecta_bd()
@@ -40,5 +46,10 @@ if __name__ == '__main__':
     resultado = lista_categorias(conexao)
     for r in resultado:
         print(r)
+    palavras = lista_palavras(conexao, 'frutas')  
+    print(palavras)
+    for palavra in palavras:
+        print(palavra)  
+
     conexao.close()
 
