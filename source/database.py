@@ -11,6 +11,12 @@ create table if not exists palavras (
     palavra varchar not null,
     categoria_id integer references categoria(id_categoria)
 );
+
+create table if not exists jogadores(
+    id_jogador integer primary key autoincrement, 
+    nome varchar not null,
+    pontos integer not null
+);
 """
 
 def conecta_bd():
@@ -39,6 +45,40 @@ def lista_palavras(conexao, categoria):
     palavras = cursor.fetchall()
     return palavras
 
+def existe_jogador(conexao, nome):
+    cursor = conexao.cursor()
+    cursor.execute("select count(*) from jogadores where lower(nome) = ?;", (nome.strip().lower(),))
+    total = cursor.fetchall()
+    print('total', total[0][0])
+    if total[0][0] == 0:
+        return False 
+    else: 
+        return True
+   
+
+def insere_jogador(conexao, nome):
+    cursor = conexao.cursor()
+    cursor.execute("insert into jogadores (nome, pontos) values (?, 0);", (nome,))
+    conexao.commit()
+    print('jogador cadastrado')
+
+def atualiza_pontos(conexao, nome, pontos):
+    cursor = conexao.cursor()
+    cursor.execute('select pontos from jogadores where nome = ?', (nome,))
+    pontos_armazenados = cursor.fetchall()
+
+    if pontos > pontos_armazenados[0][0]:
+        cursor.execute("update jogadores set pontos = ? where nome = ?;", (pontos, nome))
+        conexao.commit()
+
+    print('***** pontos atualizados!')
+
+def get_recorde(conexao):
+    cursor = conexao.cursor()
+    cursor.execute("select nome, max(pontos) from jogadores where pontos = (select max(pontos) from jogadores) group by nome order by 2 desc;")
+    return cursor.fetchall()
+
+
 if __name__ == '__main__':
     conexao = conecta_bd()
     cria_tabelas(conexao)
@@ -50,6 +90,15 @@ if __name__ == '__main__':
     print(palavras)
     for palavra in palavras:
         print(palavra)  
+    res = existe_jogador(conexao, 'Rangel')
+    print(res)
 
+    #atualiza_pontos(conexao, 'rangel', 37)
+    recorde = get_recorde(conexao)
+    if len(recorde) > 1:
+        print(recorde)
+    else:
+        print(recorde[0])
+    
     conexao.close()
 

@@ -9,18 +9,24 @@ import database as db
 
 root = tk.Tk()
 root.title('Jogo da ampulheta em Tkinter')
+#root.eval('tk::PlaceWindow . center')
 root.resizable(False,False)
 
 # funções ########################################################################
 
 # esta variável serve para controlar a execucao do jogo
 executando = True
+global segundos
+global jogador
+global erros
+global score
+conexao = db.conecta_bd()
 
 def preenche_categorias():
-    conexao = db.conecta_bd()
     categorias = db.lista_categorias(conexao)
     nomes_categorias = [nomes[1] for nomes in categorias]
-    combobox_categoria['values'] = nomes_categorias
+    #combobox_categoria['values'] = nomes_categorias
+    return nomes_categorias
 
 def selected_category(event):
      categoria = event.widget.get()
@@ -31,6 +37,15 @@ def selected_category(event):
      palavra_sorteada = random.choice(lista_palavras)
      print(palavra_sorteada)
      return palavra_sorteada
+
+def get_recorde():
+    global conexao
+    recorde = db.get_recorde(conexao)
+    if len(recorde) > 1:
+        label_recorde.config(text=f'Recorde: {recorde[0][1]} (vários jogadores)')
+    else:
+        label_recorde.config(text=f'Recorde: {recorde[0][1]} ({recorde[0][0].title()})')
+    print(recorde)
 
 def show_word():
     global label_palavra
@@ -44,17 +59,89 @@ def show_word():
         #label_palavra[i].grid(row=1, column=posicao_da_letra, ipadx=8, ipady=5, padx=5)
         posicao_da_letra += 1
 
-def start(tempo_em_segundos = 30):
+def get_name():
+    global conexao
+
+    player = tk.Toplevel(root)
+    player.transient(root)
+    x = root.winfo_x()
+    y = root.winfo_y()
+    w = player.winfo_width()
+    h = player.winfo_height()  
+    player.geometry("+%d+%d" % (x + 100, y + 200))
+
+    label_categories = tk.Label(player, text= "Escolha uma categoria:", font=('Helvetica 15'))
+    label_categories.config(font=('Arial', 12))
+    label_categories.pack(pady=10)
+    categories = tk.StringVar()
+    combobox_categories = ttk.Combobox(player, width=10, state='readonly',
+                                                textvariable=categories, background='white')
+    combobox_categories.pack()
+    combobox_categories['values'] = preenche_categorias()
+    #combobox_categories['values'] = ('Cores', 'Animais')
+    combobox_categories.current(0)
+    
+    player.title("Nome do jogador")
+    label_nome = tk.Label(player, text= "Digite o seu nome:", font=('Helvetica 15'))
+    label_nome.config(font=('Arial', 12))
+    label_nome.pack(pady=5)
+
+    entry_nome = tk.Entry(player)
+    entry_nome.pack()
+    entry_nome.focus()
+
+
+    player_name = tk.StringVar()
+
+    def name_check():
+        player_name.set(entry_nome.get())
+
+        if db.existe_jogador(conexao, entry_nome.get()):
+            response = messagebox.askyesno(title='Aviso', message='Já existe um jogador com este nome. Deseja continuar?', parent=player)
+            if not response:
+                entry_nome.focus()
+                get_name() 
+            else:
+                player.destroy()               
+        else:
+            player.destroy()
+
+
+    botao_nome = tk.Button(player, text='Começar', command = name_check)
+    botao_nome.pack(ipadx=10, ipady=8, pady=5)
+    
+    botao_nome.wait_variable(player_name)
+    
+    #player.destroy()
+    start(player_name.get())
+    
+
+def start(jogador, tempo_em_segundos = 30):
     global executando
+    global conexao
+    global segundos
+    global player_name
+    
     executando = True
+    
+    player_name = jogador
+    # pega o nome do jogador
+    if len(player_name.strip()) == 0:
+        player_name = 'Visitante'
+    else:
+        if not db.existe_jogador(conexao, player_name):
+            db.insere_jogador(conexao, player_name)
+    print('nome do jogador', player_name)
+
     botao_iniciar.configure(state='disabled')
     botao_parar.configure(state='normal')
+    
     show_word()
+    
     for i in option:
         button_dict[i].configure(state='normal')
     while tempo_em_segundos >= 0:
         minutos, segundos = divmod(tempo_em_segundos, 60)
-        #label_cronometro.config(text=f"Tempo Restante: {minutos:02d}:{segundos:02d}")
         label_cronometro.config(text=f"{minutos:02d}:{segundos:02d}")
         root.update()
         time.sleep(1)
@@ -62,7 +149,6 @@ def start(tempo_em_segundos = 30):
         if not executando:
             break
 
-    #label_cronometro.config(text=f"Tempo Esgotado: {minutos:02d}:{segundos:02d}")
     label_cronometro.config(text=f"{minutos:02d}:{segundos:02d}")
     botao_iniciar.configure(state='normal')
     botao_parar.configure(state='disabled')
@@ -114,24 +200,27 @@ imagens_forca.pack(side=tk.LEFT)
 
 # outras informações ao lado da imagem. Ex.: categoria da palavra
 label_categoria = tk.Label(frame_topo, text='Categoria:')
+label_categoria.config(font=('Arial', 13, 'bold'))
 label_categoria.pack(expand=True, anchor=tk.S, padx=30)
 
-# label_valor_categoria = tk.Label(frame_topo, text='Cores')
-# label_valor_categoria.config(font=('Arial', 14, 'bold'))
-# label_valor_categoria.pack(anchor=tk.N, padx=30)
+label_nome_categoria = tk.Label(frame_topo)
+label_nome_categoria.config(text='Cores')
+label_nome_categoria.pack(expand=True, anchor=tk.N, padx=30)
+
+
 # inserindo um combobox para as categorias de palavras
-valor_combobox = tk.StringVar()
-combobox_categoria = ttk.Combobox(frame_topo, width=10, state='readonly',
-                                              textvariable=valor_combobox, background='white')
-combobox_categoria.pack(expand=True, anchor=tk.N, padx=30)
+# valor_combobox = tk.StringVar()
+# combobox_categoria = ttk.Combobox(frame_topo, width=10, state='readonly',
+#                                               textvariable=valor_combobox, background='white')
+# combobox_categoria.pack(expand=True, anchor=tk.N, padx=30)
         
 # definindo os valores do combobox
-preenche_categorias()
-#combobox_categoria['values'] = ('Cores', 'Animais')
-combobox_categoria.current(0)
+#preenche_categorias()
+# combobox_categoria['values'] = ('Cores', 'Animais')
+# combobox_categoria.current(0)
 
 # quando selecionar um item no combobox
-combobox_categoria.bind("<<ComboboxSelected>>", selected_category)
+#combobox_categoria.bind("<<ComboboxSelected>>", selected_category)
 
 # frame para o cronometro
 frame_cronometro = tk.Frame(root)
@@ -188,8 +277,10 @@ option= ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
          'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
 
 contador = 0
+
 for i in option:
-    def clique_botao(x=i):        
+    
+    def clique_botao(x=i):          
         if x in palavra:
             posicoes = [i for i, letra in enumerate(palavra) if letra == x]
             for posicao in posicoes:
@@ -204,6 +295,7 @@ for i in option:
             print('imagem',posicao_da_imagem_na_lista)
             if posicao_da_imagem_na_lista == 7:                
                 messagebox.showinfo('Foi mal!', f'Infelizmente você perdeu! A palavra era: {palavra}', parent=root)
+                stop()
         # testando se ainda possuem espaços vazios
         labels_vazios = 0
         for i in range(len(palavra)):
@@ -213,8 +305,10 @@ for i in option:
         if labels_vazios == 0:
             stop()
             messagebox.showinfo('Uhuhu', 'Parabéns! Você acertou!', parent=root) 
-            #stop()                               
-
+            # atualiza os pontos no bd
+            print('### pontos:', (5 + segundos))
+            db.atualiza_pontos(conexao, player_name, 5 + segundos)
+            label_pontuacao.config(text=f"Pontos: {5 + segundos}")
 
         button_dict[x].grid_forget()
 
@@ -226,7 +320,6 @@ for i in option:
     
     button_dict[i]=tk.Button(frame_alfabeto, state='disabled',text=option[contador], command=clique_botao, foreground='#3C3B3B', width=4, height=2)
     button_dict[i].grid(row=posicao_na_lista[0], column=posicao_na_lista[1], ipadx=5, ipady=5, sticky=tk.EW)
-    #button_dict[i].grid()
     
     contador += 1
 
@@ -238,7 +331,7 @@ imagem_iniciar = Image.open('./imagens/start.png')
 imagem_iniciar_reduzida = imagem_iniciar.resize((35,35), Image.ANTIALIAS)
 icone_botao_iniciar = ImageTk.PhotoImage(imagem_iniciar_reduzida)
 
-botao_iniciar = tk.Button(frame_botoes, text='Iniciar', command = start, image=icone_botao_iniciar, compound=tk.LEFT, border=0)
+botao_iniciar = tk.Button(frame_botoes, text='Iniciar', command = get_name, image=icone_botao_iniciar, compound=tk.LEFT, border=0)
 botao_iniciar.pack(side=tk.LEFT, ipadx=5, ipady=5, padx=5)
 
 imagem_parar = Image.open('./imagens/stop.png')
@@ -254,5 +347,7 @@ icone_botao_sair = ImageTk.PhotoImage(imagem_sair_reduzida)
 
 botao_sair = tk.Button(frame_botoes, text='Sair', command=close, image=icone_botao_sair, compound=tk.LEFT)
 botao_sair.pack(ipadx=5, ipady=5, padx=5)
+
+root.after_idle(get_recorde)
 
 root.mainloop()
