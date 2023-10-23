@@ -94,11 +94,16 @@ if __name__ == '__main__':
     print(res)
 
     #atualiza_pontos(conexao, 'rangel', 37)
+
+    # consulta o recorde de pontos
     recorde = get_recorde(conexao)
+
     if len(recorde) > 1:
         print(recorde)
+    elif len(recorde) == 0:
+        print('Recorde: 0')
     else:
-        print(recorde[0])
+        print(f'Recorde: {recorde[0][1]} ({recorde[0][0].title()})')
     
     conexao.close()
 

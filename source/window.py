@@ -8,7 +8,7 @@ from tkinter import ttk
 import database as db
 
 root = tk.Tk()
-root.title('Jogo da ampulheta em Tkinter')
+root.title('Jogo da Forca em Tkinter')
 #root.eval('tk::PlaceWindow . center')
 root.resizable(False,False)
 
@@ -20,6 +20,7 @@ global segundos
 global jogador
 global erros
 global score
+# estabelece a conexao com o banco de dados
 conexao = db.conecta_bd()
 
 def preenche_categorias():
@@ -43,6 +44,8 @@ def get_recorde():
     recorde = db.get_recorde(conexao)
     if len(recorde) > 1:
         label_recorde.config(text=f'Recorde: {recorde[0][1]} (vários jogadores)')
+    elif len(recorde) == 0:
+        label_recorde.config(text='Recorde: 0')
     else:
         label_recorde.config(text=f'Recorde: {recorde[0][1]} ({recorde[0][0].title()})')
     print(recorde)
@@ -99,8 +102,9 @@ def get_name():
         if db.existe_jogador(conexao, entry_nome.get()):
             response = messagebox.askyesno(title='Aviso', message='Já existe um jogador com este nome. Deseja continuar?', parent=player)
             if not response:
-                entry_nome.focus()
+                player.destroy()
                 get_name() 
+                entry_nome.focus()
             else:
                 player.destroy()               
         else:
@@ -309,6 +313,7 @@ for i in option:
             print('### pontos:', (5 + segundos))
             db.atualiza_pontos(conexao, player_name, 5 + segundos)
             label_pontuacao.config(text=f"Pontos: {5 + segundos}")
+            get_recorde()
 
         button_dict[x].grid_forget()
 
